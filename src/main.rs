@@ -8,7 +8,7 @@ use std::process::{Command};
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        println!("json_env reads the .env.json file in the current directory\nand runs a program with these environment variables.\n");
+        println!("json_env reads the .env.json file in the current directory and runs a program with these environment variables.\n");
         println!("Usage:");
         println!("json_env <executable> <options for executable>\n");
         println!("json_env itself has no config options");
@@ -30,7 +30,7 @@ fn main() {
             }
         }
         Err(_) => {
-            eprintln!("Could not open the .env.json file. Make sure it exists in the\ncurrent directory and can be read.");
+            eprintln!("Could not open the .env.json file. Make sure it exists in the current directory and can be read.");
         }
     }
 }
@@ -73,7 +73,7 @@ fn parse_json(in_str: &str) -> Result<HashMap<String, String>> {
             val_str = val.to_string();
         }
         if val.is_string() {
-            val_str = format!("'{}'", val.as_str().unwrap());
+            val_str = val.as_str().unwrap().to_string();
         }
         only_strings.insert(str.to_string(), val_str);
     }
