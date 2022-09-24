@@ -8,7 +8,6 @@ homepage = "https://github.com/brodo/json_env"
 repository = "https://github.com/brodo/json_env.git"
 readme = "Readme.md"
 categories = ["command-line-utilities", "development-tools"]
-tags = ["env", "dotenv", "direnv"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
