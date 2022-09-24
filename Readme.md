@@ -5,6 +5,34 @@
 with them. 
 Storing configuration in the environment separate from code is based on [The Twelve-Factor](http://12factor.net/config) App methodology.
 
+## How to install
+
+With homebrew:
+```shell
+$ brew tap brodo/json_env
+$ brew install json_env
+```
+
+With cargo:
+```shell
+$ cargo install json_env
+```
+
+## How to use
+
+Just run json_env with any program as a parameter: 
+```shell
+$ json_env my_program
+```
+
+Additional command line arguments that are passed to `json_env` are forwarded to the child process:
+```shell
+$ json_env echo "Test"
+
+Test
+```
+
+### Example
 .env.json:
 ```json
 {
@@ -29,13 +57,7 @@ nested={"boo":"far","hello":"world"}
 [...]
 ```
 
-Additional command line arguments that are passed to `json_env` are forwarded to the child process:
+## License
 
-Shell:
-```shell
-
-$ json_env echo "Test"
-
-Test
-```
+json_env is licensed under the Apache 2.0 license.
 
