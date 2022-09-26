@@ -1,9 +1,9 @@
-use std::fs::File;
-use std::io::Read;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::env;
-use std::process::{Command};
+use std::fs::File;
+use std::io::Read;
+use std::process::Command;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -36,10 +36,7 @@ fn main() {
 }
 
 fn execute(vars: &HashMap<String, String>, command: &str, args: &Vec<String>) {
-    match Command::new(command)
-        .envs(vars)
-        .args(args)
-        .spawn() {
+    match Command::new(command).envs(vars).args(args).spawn() {
         Err(e) => {
             eprintln!("Could not start executable '{command}': {e}");
         }
@@ -50,7 +47,6 @@ fn execute(vars: &HashMap<String, String>, command: &str, args: &Vec<String>) {
         }
     }
 }
-
 
 fn parse_json(in_str: &str) -> Result<HashMap<String, String>> {
     let completely_parsed: HashMap<String, serde_json::Value> = serde_json::from_str(&in_str)?;
