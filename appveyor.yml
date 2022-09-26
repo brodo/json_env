@@ -71,6 +71,7 @@ deploy:
     # In this example, there are some targets that are tested using the stable
     # and nightly channels. This condition makes sure there is only one release
     # for such targets and that's generated using the stable channel
+    branch: master
     appveyor_repo_tag: true
   provider: GitHub
 
@@ -84,9 +85,6 @@ branches:
     - /^v\d+\.\d+\.\d+.*$/
     - master
 
-notifications:
-  - provider: Email
-    on_build_success: false
 
 # Building is done in the test phase, so we disable Appveyor's build phase.
 build: false
