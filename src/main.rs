@@ -5,8 +5,8 @@ use std::fs::File;
 use std::io::Read;
 use std::process::Command;
 
-//! `json_env` is [dotenv](https://github.com/motdotla/dotenv), but with JSON.
-//! See [readme](Readme.md) for more information.
+// `json_env` is [dotenv](https://github.com/motdotla/dotenv), but with JSON.
+// See [readme](Readme.md) for more information.
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
