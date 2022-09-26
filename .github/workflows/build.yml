@@ -1,9 +1,9 @@
 name: Build
 on:
   pull_request:
-  push:
-    branches:
-      - master
+  label:
+    types:
+      - created
   schedule:
     - cron: '00 01 * * *'
 
