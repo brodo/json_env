@@ -46,6 +46,13 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
+          target: aarch64-apple-darwin
+
+      - name: Install aarch64-apple-darwin target
+        uses: actions-rs/toolchain@v1
+        with:
+          target: aarch64-apple-darwin
+        if: ${{matrix.target = 'aarch64-apple-darwin'}}
 
       - uses: Swatinem/rust-cache@v1
 
