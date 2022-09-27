@@ -52,7 +52,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           target: aarch64-apple-darwin
-        if: ${{matrix.target = 'aarch64-apple-darwin'}}
+        if: ${{matrix.target == 'aarch64-apple-darwin'}}
 
       - uses: Swatinem/rust-cache@v1
 
