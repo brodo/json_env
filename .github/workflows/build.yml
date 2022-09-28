@@ -1,9 +1,7 @@
 name: Build
 on:
   pull_request:
-  label:
-    types:
-      - created
+  push:
   schedule:
     - cron: '00 01 * * *'
 
