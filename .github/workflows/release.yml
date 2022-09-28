@@ -184,7 +184,7 @@ jobs:
 
       - uses: mislav/bump-homebrew-formula-action@v1
         with:
-          formula-path: Formular\/${{env.PROJECT_NAME}}.rb
+          formula-path: Formula/${{env.PROJECT_NAME}}.rb
           homebrew-tap: ${{ env.BREW_TAP }}
           download-url: "https://github.com/${{ env.REPO_NAME }}/releases/download/${{ steps.extract-version.outputs.tag-name }}/${{env.PROJECT_NAME}}-${{ steps.extract-version.outputs.tag-name }}-x86_64-macos.tar.xz"
           commit-message: updating formula for ${{ env.PROJECT_NAME }}
