@@ -77,6 +77,7 @@ jobs:
           use-cross: ${{ matrix.cross }}
           command: test
           args: --release --locked --target ${{ matrix.target }}
+        if: ${{matrix.target != 'aarch64-apple-darwin'}}
 
       - name: Build release binary
         uses: actions-rs/cargo@v1
