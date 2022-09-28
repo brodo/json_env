@@ -186,7 +186,7 @@ jobs:
         with:
           formula-path: Formula/${{env.PROJECT_NAME}}.rb
           homebrew-tap: ${{ env.BREW_TAP }}
-          download-url: "https://github.com/${{ env.REPO_NAME }}/releases/download/${{ steps.extract-version.outputs.tag-name }}/${{env.PROJECT_NAME}}-${{ steps.extract-version.outputs.tag-name }}.zip"
+          download-url: "https://github.com/${{ env.REPO_NAME }}/archive/ref/tags/${{ steps.extract-version.outputs.tag-name }}/${{env.PROJECT_NAME}}-${{ steps.extract-version.outputs.tag-name }}.zip"
           commit-message: updating formula for ${{ env.PROJECT_NAME }}
         env:
           COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
