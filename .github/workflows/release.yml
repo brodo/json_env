@@ -212,12 +212,12 @@ jobs:
       # license or license-file, description, homepage, documentation, repository, readme.
       # Read more: https://doc.rust-lang.org/cargo/reference/publishing.html
 
-      - name: Install ${{ matrix.rust }} toolchain
+      - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ matrix.rust }}
-          target: ${{ matrix.target }}
+          toolchain: stable
+          target: x86_64-unknown-linux-gnu
           override: true
           components: cargo
       - run: cargo publish --token ${CRATES_TOKEN}
