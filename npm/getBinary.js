@@ -32,7 +32,7 @@ function getPlatform() {
 function getBinary() {
     const platform = getPlatform();
     const version = require('../package.json').version;
-    const extension = platform === 'x86_64-windows' ? 'zip' : 'tar.xz';
+    const extension = platform === 'x86_64-windows' ? 'zip' : 'tar.gz';
     const url = `https://github.com/brodo/json_env/releases/download/v${version}/json_env-v${version}-${platform}.${extension}`;
     return new Binary('json_env', url);
 }

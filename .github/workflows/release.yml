@@ -162,7 +162,7 @@ jobs:
               chmod +x tmp/$pkgname/$BIN_NAME$exe
 
               if [ "$exe" = "" ]; then
-                  tar cJf dist/$pkgname.tar.xz -C tmp $pkgname
+                  tar czf dist/$pkgname.tar.gz -C tmp $pkgname
               else
                   (cd tmp && 7z a -r ../dist/$pkgname.zip $pkgname)
               fi
