@@ -9,11 +9,18 @@ use std::process::Command;
 // See [readme](Readme.md) for more information.
 fn main() {
     let args: Vec<String> = env::args().collect();
+    let help_text = concat!("json_env reads the .env.json file in the current directory and runs a program with these environment variables.\n",
+    "Usage:",
+    "json_env <executable> <options for executable>\n",
+    "json_env itself has no config options"
+    );
+
     if args.len() < 2 {
-        println!("json_env reads the .env.json file in the current directory and runs a program with these environment variables.\n");
-        println!("Usage:");
-        println!("json_env <executable> <options for executable>\n");
-        println!("json_env itself has no config options");
+        println!("{}", help_text);
+    }
+
+    if args[1] == "--help" {
+        println!("{}", help_text)
     }
 
     match File::open(".env.json") {
