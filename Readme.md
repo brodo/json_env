@@ -15,7 +15,7 @@ $ brew install json_env
 
 With NPM
 ```shell
-$ npm i -g json_env
+$ npm i -g @brodo/json_env
 ```
 
 With cargo:
