@@ -1,6 +1,6 @@
 {
-  "name": "json_env",
-  "version": "1.1.0",
+  "name": "@brodo/json_env",
+  "version": "1.1.1",
   "description": "json_env is dotenv, but with JSON.",
   "directories": {
     "example": "examples"
@@ -20,7 +20,8 @@
     "json",
     "env",
     "dotenv",
-    "dotfile"
+    "dotfile",
+    "cli"
   ],
   "author": "Julian Dax <julian.dax@posteo.de>",
   "license": "Apache-2.0",
