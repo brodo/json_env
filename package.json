@@ -1,6 +1,6 @@
 {
   "name": "@brodo/json_env",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "json_env is dotenv, but with JSON.",
   "directories": {
     "example": "examples"

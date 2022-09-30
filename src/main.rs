@@ -1,10 +1,10 @@
-use anyhow::Result;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::process::Command;
 
+use anyhow::Result;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
