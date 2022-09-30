@@ -13,10 +13,18 @@ $ brew tap brodo/json_env
 $ brew install json_env
 ```
 
+With NPM
+```shell
+$ npm i -g json_env
+```
+
 With cargo:
 ```shell
 $ cargo install json_env
 ```
+
+Or download the binaries for your platform on the [releases page](https://github.com/brodo/json_env/releases/) and
+put them in your $PATH.
 
 ## How to use
 

@@ -1,0 +1,37 @@
+{
+  "name": "json_env",
+  "version": "1.1.0",
+  "description": "json_env is dotenv, but with JSON.",
+  "directories": {
+    "example": "examples"
+  },
+  "bin": {
+    "json_env": "npm/run.js"
+  },
+  "scripts": {
+    "preinstall": "node npm/scripts.js uninstall",
+    "postinstall": "node npm/scripts.js install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brodo/json_env.git"
+  },
+  "keywords": [
+    "json",
+    "env",
+    "dotenv",
+    "dotfile"
+  ],
+  "author": "Julian Dax <julian.dax@posteo.de>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/brodo/json_env/issues"
+  },
+  "homepage": "https://github.com/brodo/json_env#readme",
+  "dependencies": {
+    "binary-install": "^1.0.6"
+  },
+  "files": [
+    "npm/**/*"
+  ]
+}
