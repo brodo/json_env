@@ -5,6 +5,9 @@ use std::fs::File;
 use std::io::Read;
 use std::process::Command;
 
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 // `json_env` is [dotenv](https://github.com/motdotla/dotenv), but with JSON.
 // See [readme](Readme.md) for more information.
 fn main() {
@@ -12,7 +15,7 @@ fn main() {
     let help_text = concat!("json_env reads the .env.json file in the current directory and runs a program with these environment variables.\n",
     "Usage:",
     "json_env <executable> <options for executable>\n",
-    "json_env itself has no config options"
+    "json_env itself has no config options."
     );
 
     if args.len() < 2 {
@@ -20,7 +23,13 @@ fn main() {
     }
 
     if args[1] == "--help" {
-        println!("{}", help_text)
+        println!("{}", help_text);
+        return;
+    }
+
+    if args[1] == "--version" {
+        println!("json_env version {}", VERSION);
+        return;
     }
 
     match File::open(".env.json") {
