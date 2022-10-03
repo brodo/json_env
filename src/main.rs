@@ -20,6 +20,7 @@ fn main() {
 
     if args.len() < 2 {
         println!("{}", help_text);
+        return;
     }
 
     if args[1] == "--help" {
