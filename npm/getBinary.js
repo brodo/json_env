@@ -26,7 +26,7 @@ function getPlatform() {
             return 'aarch64-macos';
         }
     }
-    throw new Error(`Unsupported platform: ${type} ${arch}. Please create an issue at https://github.com/woubuc/sweep/issues`);
+    throw new Error(`Unsupported platform: ${type} ${arch}. Please create an issue at https://github.com/brodo/json_env/issues`);
 }
 
 function getBinary() {
