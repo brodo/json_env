@@ -157,6 +157,7 @@ mod tests {
     #[test]
     fn expand_nested() {
         let extendable_json = include_str!("../examples/extend2.json");
+        env::set_var("FOO", "Bar");
         let val = parse_and_extract(&extendable_json, "$");
         assert!(val.is_ok());
         let result = value_to_hash_map(&val.unwrap(), true);

@@ -1,6 +1,6 @@
 [package]
 name = "json_env"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2021"
 license = "Apache-2.0"
 description ="Loads an environment variables from a JSON file (`.env.json` per default) and starts a subprocess with them."
