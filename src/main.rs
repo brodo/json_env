@@ -12,11 +12,10 @@ use std::process::Command;
 #[command(
     author,
     version,
-    about,
-    long_about = "json_env reads the .env.json file in the current directory and runs a program with these environment variables."
+    about = "Reads a JSON file and runs a program with these environment variables."
 )]
 struct Args {
-    /// Should env variables be extended
+    /// Expand env variables
     #[arg(short, long, default_value_t = false)]
     expand: bool,
     /// The JSON files from which the environment variables are taken from
@@ -63,12 +62,12 @@ fn main() {
 }
 
 fn parse_and_extract(json_str: &str, path: &str) -> Result<Vec<Value>> {
-    let finder = JsonPathFinder::from_str(json_str, path).map_err(|e| Error::msg(e))?;
+    let finder = JsonPathFinder::from_str(json_str, path).map_err(Error::msg)?;
     finder
         .find()
         .as_array()
-        .map(|obj| obj.clone())
-        .ok_or(Error::msg("Json path does not point to valid object."))
+        .cloned()
+        .ok_or_else(|| Error::msg("Json path does not point to valid object."))
 }
 
 fn execute(vars: &HashMap<String, String>, command: &str, args: &Vec<String>) {
