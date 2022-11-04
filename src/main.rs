@@ -45,7 +45,6 @@ fn main() {
 
     let mut env_vars: HashMap<String, String> = HashMap::new();
 
-
     for (i, file_name) in args.config_files.iter().enumerate() {
         let Ok(mut file) = File::open(file_name) else {
             cmd.error(
@@ -61,6 +60,16 @@ fn main() {
         if file.read_to_string(&mut contents).is_ok() {
             match parse_and_extract(&contents, json_path) {
                 Ok(val) => {
+                    if val.is_empty() {
+                        cmd.error(
+                            ErrorKind::InvalidValue,
+                            format!(
+                                "There is nothing in file '{}' at path '{}'",
+                                file_name, json_path
+                            ),
+                        )
+                        .exit();
+                    }
                     add_values_to_map(&val, args.expand, &mut env_vars);
                 }
                 Err(e) => cmd

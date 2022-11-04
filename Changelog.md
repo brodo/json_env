@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Better error messages
 - Support for multiple config files
 
+### Changed
+
+- Throw error if a JSON path is provided, that does not point to a thing
+
+
 ## [1.2.0] - 2022-11-03
 
 ### Added
