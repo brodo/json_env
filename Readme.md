@@ -56,7 +56,6 @@ Test
 Shell:
 ```shell
 $ json_env env
-
 MY_USER=Carl
 NODE_ENV=DEV
 NUM_USERS=10
@@ -81,9 +80,9 @@ Shell:
 ```shell
 $ json_env -e env
 FOO=Bar
-USER=Carl
-MY_VAR=Bar
 MY_OTHER_VAR=User:Carl
+MY_VAR=Bar
+USER=Carl
 [...]
 ```
 
@@ -118,13 +117,45 @@ for example:
 
 The `Values` property contains the environment variables we are interested in.
 You can use this file to run `app.js` with the environment variables defined in `Values`
-by providing the [JSON Path](https://docs.rs/jsonpath-rust/latest/jsonpath_rust/) `.Values``:
+by providing the [JSON Path](https://docs.rs/jsonpath-rust/latest/jsonpath_rust/) `.Values` using the `-p` flag:
 
 ```shell
 $ json_env -c local.settings.json -p .Values node app.js
-
 ```
 
+
+### Using multiple config files
+
+In some cases, it makes sense to use several config files. For example, one
+file can be checked into your VCS containing default values and a second one
+can be used to overwrite some of them:
+
+defaults.json
+```json
+{
+  "SERVER_URL": "https://example.com/foo",
+  "USER": "TO_BE_OVERWRITTEN",
+  "PASSWORD": "TO_BE_OVERWRITTEN"
+}
+```
+
+my_settings.json
+```json
+{
+  "USER": "admin",
+  "PASSWORD": "hunter2"
+}
+```
+
+```shell
+$ json_env -c defaults.json -c my_settings.json env
+PASSWORD=hunter2
+SERVER_URL=https://example.com/foo
+USER=admin
+[...]
+```
+
+Later config files overwrite the earlier ones. You can also use multiple JSON paths, which are applied in order.
 
 ## License
 

@@ -22,10 +22,10 @@ struct Args {
     expand: bool,
     /// The JSON files from which the environment variables are taken from
     #[arg(short, long, default_value = ".env.json")]
-    config_file: String,
-    /// A JSON path into the config. For examples and spec, see https://docs.rs/jsonpath-rust/latest/jsonpath_rust/
+    config_files: Vec<String>,
+    /// A JSON paths into the config files, in order. For examples and spec, see https://docs.rs/jsonpath-rust/latest/jsonpath_rust/
     #[arg(short, long, default_value = "$")]
-    path: String,
+    paths: Vec<String>,
     /// The executable which should be started, with it's command line arguments.
     executable: Vec<String>,
 }
@@ -34,8 +34,8 @@ struct Args {
 // See [readme](Readme.md) for more information.
 fn main() {
     let args: Args = Args::parse();
+    let mut cmd = Args::command();
     if args.executable.is_empty() {
-        let mut cmd = Args::command();
         cmd.error(
             ErrorKind::TooFewValues,
             "You need to provide the name of an executable",
@@ -43,28 +43,46 @@ fn main() {
         .exit();
     }
 
-    match File::open(args.config_file) {
-        Ok(mut file) => {
-            let mut contents = String::new();
-            if file.read_to_string(&mut contents).is_ok() {
-                match parse_and_extract(&contents, &args.path) {
-                    Ok(val) => {
-                        let hash_map = value_to_hash_map(&val, args.expand);
-                        execute(
-                            &hash_map,
-                            &args.executable[0],
-                            &(args.executable[1..]).to_vec(),
-                        )
-                    }
+    let mut env_vars: HashMap<String, String> = HashMap::new();
 
-                    Err(e) => eprintln!("error while parsing json or jsonpath: {}", e),
+
+    for (i, file_name) in args.config_files.iter().enumerate() {
+        let Ok(mut file) = File::open(file_name) else {
+            cmd.error(
+                ErrorKind::InvalidValue,
+                format!("Could not open '{}'", file_name),
+            ).exit();
+        };
+        let mut contents = String::new();
+        let json_path = match args.paths.get(i) {
+            Some(p) => p,
+            None => "$",
+        };
+        if file.read_to_string(&mut contents).is_ok() {
+            match parse_and_extract(&contents, json_path) {
+                Ok(val) => {
+                    add_values_to_map(&val, args.expand, &mut env_vars);
                 }
+                Err(e) => cmd
+                    .error(
+                        ErrorKind::InvalidValue,
+                        format!("error while parsing json or jsonpath:  {}", e),
+                    )
+                    .exit(),
             }
-        }
-        Err(_) => {
-            eprintln!("Could not open the .env.json file. Make sure it exists in the current directory and can be read.");
+        } else {
+            cmd.error(
+                ErrorKind::InvalidValue,
+                format!("Could not read JSON in '{}'", file_name),
+            )
+            .exit();
         }
     }
+    execute(
+        &env_vars,
+        &args.executable[0],
+        &(args.executable[1..]).to_vec(),
+    )
 }
 
 fn parse_and_extract(json_str: &str, path: &str) -> Result<Vec<Value>> {
@@ -89,8 +107,11 @@ fn execute(vars: &HashMap<String, String>, command: &str, args: &Vec<String>) {
     }
 }
 
-fn value_to_hash_map(values: &Vec<Value>, should_expand: bool) -> HashMap<String, String> {
-    let mut only_strings = HashMap::new();
+fn add_values_to_map(
+    values: &Vec<Value>,
+    should_expand: bool,
+    str_map: &mut HashMap<String, String>,
+) {
     for value in values {
         if value.is_object() {
             let in_val = value.as_object().unwrap();
@@ -122,14 +143,13 @@ fn value_to_hash_map(values: &Vec<Value>, should_expand: bool) -> HashMap<String
                             expanded_val = val_str.replace(&env_key_dollar, &env_value);
                         }
                     }
-                    only_strings.insert(key.to_string(), expanded_val);
+                    str_map.insert(key.to_string(), expanded_val);
                 } else {
-                    only_strings.insert(key.to_string(), val_str);
+                    str_map.insert(key.to_string(), val_str);
                 }
             }
         }
     }
-    only_strings
 }
 
 #[cfg(test)]
@@ -142,8 +162,9 @@ mod tests {
         let simple_json = include_str!("../examples/simple/.env.json");
         let val = parse_and_extract(&simple_json, "$");
         assert!(val.is_ok());
-        let result = value_to_hash_map(&val.unwrap(), false);
-        let node_env = result.get("NODE_ENV");
+        let mut env_vars: HashMap<String, String> = HashMap::new();
+        add_values_to_map(&val.unwrap(), false, &mut env_vars);
+        let node_env = env_vars.get("NODE_ENV");
         assert!(node_env.is_some());
         assert_eq!(node_env.unwrap().to_string(), "DEV".to_string());
     }
@@ -154,8 +175,9 @@ mod tests {
         env::set_var("FOO", "Bar");
         let val = parse_and_extract(&extendable_json, "$");
         assert!(val.is_ok());
-        let result = value_to_hash_map(&val.unwrap(), true);
-        let node_env = result.get("TEST");
+        let mut env_vars: HashMap<String, String> = HashMap::new();
+        add_values_to_map(&val.unwrap(), true, &mut env_vars);
+        let node_env = env_vars.get("TEST");
         assert!(node_env.is_some());
         assert_eq!(node_env.unwrap().to_string(), "Bar".to_string());
     }
@@ -166,8 +188,9 @@ mod tests {
         env::set_var("FOO", "Bar");
         let val = parse_and_extract(&extendable_json, "$");
         assert!(val.is_ok());
-        let result = value_to_hash_map(&val.unwrap(), true);
-        let node_env = result.get("TEST");
+        let mut env_vars: HashMap<String, String> = HashMap::new();
+        add_values_to_map(&val.unwrap(), true, &mut env_vars);
+        let node_env = env_vars.get("TEST");
         assert!(node_env.is_some());
         assert!(node_env.unwrap().contains("Bar"));
     }
@@ -177,8 +200,9 @@ mod tests {
         let nested_json = include_str!("../examples/nested/.env.json");
         let val = parse_and_extract(&nested_json, "$.nested");
         assert!(val.is_ok());
-        let result = value_to_hash_map(&val.unwrap(), true);
-        let hello = result.get("hello");
+        let mut env_vars: HashMap<String, String> = HashMap::new();
+        add_values_to_map(&val.unwrap(), true, &mut env_vars);
+        let hello = env_vars.get("hello");
         assert!(hello.is_some());
         assert_eq!(hello.unwrap(), "world");
     }
