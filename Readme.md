@@ -118,10 +118,10 @@ for example:
 
 The `Values` property contains the environment variables we are interested in.
 You can use this file to run `app.js` with the environment variables defined in `Values`
-by providing the [JSON Path](https://docs.rs/jsonpath-rust/latest/jsonpath_rust/) `$.Values``:
+by providing the [JSON Path](https://docs.rs/jsonpath-rust/latest/jsonpath_rust/) `.Values``:
 
 ```shell
-$ json_env -c local.settings.json -p $.Values node app.js
+$ json_env -c local.settings.json -p .Values node app.js
 
 ```
 

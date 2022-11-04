@@ -1,4 +1,6 @@
 use anyhow::{Error, Result};
+use clap::error::ErrorKind;
+use clap::CommandFactory;
 use clap::Parser;
 use jsonpath_rust::JsonPathFinder;
 use serde_json::Value;
@@ -33,8 +35,12 @@ struct Args {
 fn main() {
     let args: Args = Args::parse();
     if args.executable.is_empty() {
-        eprintln!("You need to provide the name of an executable!");
-        return;
+        let mut cmd = Args::command();
+        cmd.error(
+            ErrorKind::TooFewValues,
+            "You need to provide the name of an executable",
+        )
+        .exit();
     }
 
     match File::open(args.config_file) {
