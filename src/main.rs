@@ -389,7 +389,7 @@ mod tests {
     #[test]
     fn parse_simple() {
         let simple_json = include_str!("../examples/simple/.env.json");
-        let val = parse_and_extract(&simple_json, "$");
+        let val = parse_and_extract(simple_json, "$");
         assert!(val.is_ok());
         let mut env_vars: HashMap<String, String> = HashMap::new();
         add_values_to_map(&val.unwrap(), false, &mut env_vars);
@@ -402,7 +402,7 @@ mod tests {
     fn expand() {
         let extendable_json = include_str!("../examples/extend.json");
         env::set_var("FOO", "Bar");
-        let val = parse_and_extract(&extendable_json, "$");
+        let val = parse_and_extract(extendable_json, "$");
         assert!(val.is_ok());
         let mut env_vars: HashMap<String, String> = HashMap::new();
         add_values_to_map(&val.unwrap(), true, &mut env_vars);
@@ -415,7 +415,7 @@ mod tests {
     fn expand_nested() {
         let extendable_json = include_str!("../examples/extend2.json");
         env::set_var("FOO", "Bar");
-        let val = parse_and_extract(&extendable_json, "$");
+        let val = parse_and_extract(extendable_json, "$");
         assert!(val.is_ok());
         let mut env_vars: HashMap<String, String> = HashMap::new();
         add_values_to_map(&val.unwrap(), true, &mut env_vars);
@@ -427,7 +427,7 @@ mod tests {
     #[test]
     fn use_json_path() {
         let nested_json = include_str!("../examples/nested/.env.json");
-        let val = parse_and_extract(&nested_json, "$.nested");
+        let val = parse_and_extract(nested_json, "$.nested");
         assert!(val.is_ok());
         let mut env_vars: HashMap<String, String> = HashMap::new();
         add_values_to_map(&val.unwrap(), true, &mut env_vars);
