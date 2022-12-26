@@ -1,19 +1,19 @@
-use std::{env, fs};
+use anyhow::{Error, Result};
+use clap::error::ErrorKind;
+use clap::CommandFactory;
+use clap::Parser;
+use dialoguer::Confirm;
+use dirs::home_dir;
+use jsonpath_rust::JsonPathFinder;
+use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::Command;
-use anyhow::{Error, Result};
-use clap::CommandFactory;
-use clap::error::ErrorKind;
-use clap::Parser;
-use dirs::home_dir;
-use jsonpath_rust::JsonPathFinder;
-use serde_json::Value;
-use std::fmt::{Display, Formatter};
 use std::string::ToString;
-use dialoguer::Confirm;
+use std::{env, fs};
 
 struct Shell {
     shell_type: ShellType,
@@ -56,7 +56,6 @@ impl Clone for ShellType {
 
 impl Copy for ShellType {}
 
-
 impl Clone for Shell {
     fn clone(&self) -> Self {
         Shell {
@@ -66,7 +65,6 @@ impl Clone for Shell {
         }
     }
 }
-
 
 impl Display for Shell {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -86,12 +84,11 @@ static FISH: Shell = Shell {
     script: include_str!("run_on_cd.fish"),
 };
 
-static POWERSHELL : Shell = Shell {
+static POWERSHELL: Shell = Shell {
     shell_type: ShellType::Powershell,
     config_path: ".config/powershell/Microsoft.PowerShell_profile.ps1",
     script: "TODO",
 };
-
 
 static NU_SHELL: Shell = Shell {
     shell_type: ShellType::NuShell,
@@ -105,13 +102,11 @@ static ZSH: Shell = Shell {
     script: include_str!("run_on_cd.zsh"),
 };
 
-
-
 #[derive(Parser, Debug)]
 #[command(
-author,
-version,
-about = "Reads a JSON file and runs a program with these environment variables."
+    author,
+    version,
+    about = "Reads a JSON file and runs a program with these environment variables."
 )]
 struct Args {
     /// Expand env variables
@@ -144,7 +139,7 @@ fn main() {
             ErrorKind::TooFewValues,
             "You need to provide the name of an executable",
         )
-            .exit();
+        .exit();
     }
 
     if args.install {
@@ -178,7 +173,7 @@ fn main() {
                                 file_name, json_path
                             ),
                         )
-                            .exit();
+                        .exit();
                     }
                     add_values_to_map(&val, args.expand, &mut env_vars);
                 }
@@ -194,7 +189,7 @@ fn main() {
                 ErrorKind::InvalidValue,
                 format!("Could not read JSON in '{}'", file_name),
             )
-                .exit();
+            .exit();
         }
     }
 
@@ -230,33 +225,49 @@ fn install_shell_script() {
         return;
     };
 
-
     // Get the appropriate script to append to the configuration file
     // for the user's current shell
 
-    if !Confirm::new().with_prompt(format!("Your shell has been detected as: '{}', is that correct?", shell)).interact().unwrap_or(false) {
+    if !Confirm::new()
+        .with_prompt(format!(
+            "Your shell has been detected as: '{}', is that correct?",
+            shell
+        ))
+        .interact()
+        .unwrap_or(false)
+    {
         println!("Please set your shell to one of the supported shells and try again.");
         return;
     }
 
     // indent a multiline string using 4 spaces
-    let script = shell.script.lines().map(
-        |line| format!("    {}", line)
-    ).collect::<Vec<String>>().join("\n");
-
+    let script = shell
+        .script
+        .lines()
+        .map(|line| format!("    {}", line))
+        .collect::<Vec<String>>()
+        .join("\n");
 
     let config_path = match home_dir() {
         Some(mut path) => {
             path.push(shell.config_path);
             path
-        },
+        }
         None => {
             println!("Could not determine home directory");
             return;
         }
     };
-    println!("I am going to append the following lines to your shell configuration file at '{}':\n {}\n", config_path.to_str().unwrap(), script);
-    if !Confirm::new().with_prompt("Do you want me to do that? ").interact().unwrap_or(false) {
+    println!(
+        "I am going to append the following lines to your shell configuration file at '{}':\n {}\n",
+        config_path.to_str().unwrap(),
+        script
+    );
+    if !Confirm::new()
+        .with_prompt("Do you want me to do that? ")
+        .interact()
+        .unwrap_or(false)
+    {
         println!("Please set your shell to one of the supported shells and try again.");
         return;
     }
@@ -270,12 +281,8 @@ fn install_shell_script() {
         file.write_all(b"").unwrap();
     }
 
-
     // Open the configuration file in append-only mode
-    let mut file = match fs::OpenOptions::new()
-        .append(true)
-        .open(&config_path)
-    {
+    let mut file = match fs::OpenOptions::new().append(true).open(&config_path) {
         Ok(file) => file,
         Err(error) => {
             eprintln!("Error opening {:?}: {}", &config_path, error);
