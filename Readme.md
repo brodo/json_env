@@ -6,8 +6,17 @@
 [![Crates.io](https://img.shields.io/crates/v/json_env)](https://crates.io/crates/json_env) [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 `json_env` is [dotenv](https://github.com/motdotla/dotenv), but with JSON.
-It loads an environment variables from JSON files (`.env.json` per default) and starts a subprocess with them. 
+It loads environment variables from JSON files (`.env.json` per default) and starts a subprocess with them. 
 Storing configuration in the environment separate from code is based on [The Twelve-Factor](http://12factor.net/config) App methodology.
+
+json_env is written in Rust, but a [npm package](https://www.npmjs.com/package/@brodo/json_env) is also provided, so you
+can also add it as a dev-dependency to your Node project.
+
+## Use-Cases
+
+- Load different environment variables for different execution contexts (testing, staging, production)
+- Load secrets (e.g. connection strings) from a dedicated configuration file
+- Easily provide JSON values inside environment variables
 
 ## How to install
 
