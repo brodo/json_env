@@ -13,7 +13,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::Command;
 use std::string::ToString;
-use std::{env, fs};
+use std::{env, fs, process};
 
 struct Shell {
     shell_type: ShellType,
@@ -26,8 +26,6 @@ enum ShellType {
     Bash,
     Zsh,
     Fish,
-    NuShell,
-    Powershell,
 }
 
 impl Display for ShellType {
@@ -36,8 +34,6 @@ impl Display for ShellType {
             ShellType::Bash => write!(f, "bash"),
             ShellType::Zsh => write!(f, "zsh"),
             ShellType::Fish => write!(f, "fish"),
-            ShellType::NuShell => write!(f, "nushell"),
-            ShellType::Powershell => write!(f, "powershell"),
         }
     }
 }
@@ -48,8 +44,6 @@ impl Clone for ShellType {
             ShellType::Bash => ShellType::Bash,
             ShellType::Zsh => ShellType::Zsh,
             ShellType::Fish => ShellType::Fish,
-            ShellType::NuShell => ShellType::NuShell,
-            ShellType::Powershell => ShellType::Powershell,
         }
     }
 }
@@ -84,18 +78,6 @@ static FISH: Shell = Shell {
     script: include_str!("run_on_cd.fish"),
 };
 
-static POWERSHELL: Shell = Shell {
-    shell_type: ShellType::Powershell,
-    config_path: ".config/powershell/Microsoft.PowerShell_profile.ps1",
-    script: "TODO",
-};
-
-static NU_SHELL: Shell = Shell {
-    shell_type: ShellType::NuShell,
-    config_path: ".config/nu/config.toml",
-    script: "TODO",
-};
-
 static ZSH: Shell = Shell {
     shell_type: ShellType::Zsh,
     config_path: ".zshrc",
@@ -104,9 +86,9 @@ static ZSH: Shell = Shell {
 
 #[derive(Parser, Debug)]
 #[command(
-    author,
-    version,
-    about = "Reads a JSON file and runs a program with these environment variables."
+author,
+version,
+about = "Reads a JSON file and runs a program with these environment variables."
 )]
 struct Args {
     /// Expand env variables
@@ -116,7 +98,7 @@ struct Args {
     #[arg(long, default_value_t = false)]
     export: bool,
     /// The JSON files from which the environment variables are taken from
-    #[arg(short, long, default_value = ".env.json")]
+    #[arg(short, long)]
     config_files: Vec<String>,
     /// A JSON paths into the config files, in order. For examples and spec, see https://docs.rs/jsonpath-rust/latest/jsonpath_rust/
     #[arg(short, long, default_value = "$")]
@@ -126,32 +108,68 @@ struct Args {
     /// add a script to your shell configuration that automatically exports variables defined in .env.json when changing into a directory that contains such a file.
     #[arg(long, default_value_t = false)]
     install: bool,
+    /// Silent mode, do not report errors (useful for scripts). Implies 'yes' to all questions.
+    #[arg(short, long, default_value_t = false)]
+    silent: bool,
+    /// Print the path of the .env.json file that is used.
+    #[arg(long, default_value_t = false)]
+    print_config_path: bool,
 }
 
 // `json_env` is [dotenv](https://github.com/motdotla/dotenv), but with JSON.
 // See [readme](Readme.md) for more information.
 fn main() {
-    let args: Args = Args::parse();
+    let mut args: Args = Args::parse();
     let mut cmd = Args::command();
 
-    if args.executable.is_empty() && !(args.export || args.install) {
-        cmd.error(
-            ErrorKind::TooFewValues,
-            "You need to provide the name of an executable",
-        )
-        .exit();
-    }
 
     if args.install {
-        install_shell_script();
+        install_shell_script(args.silent);
         return;
     }
 
     let mut env_vars: HashMap<String, String> = HashMap::new();
+    if args.print_config_path {
+        if let Some(config_path) = find_env_file() {
+            println!("{}", config_path.to_str().unwrap());
+        } else {
+            println!("No .env.json file found");
+        }
+        return;
+    }
+
+    if args.executable.is_empty() && !args.export {
+        if args.silent {
+            process::exit(1);
+        }
+        cmd.error(
+            ErrorKind::TooFewValues,
+            "You need to provide the name of an executable",
+        )
+            .exit();
+    }
+
+    if args.config_files.is_empty() {
+        let env_json = find_env_file();
+        if let Some(path) = env_json {
+            args.config_files.push(path.to_str().unwrap().to_string());
+        } else if args.silent {
+            process::exit(1);
+        } else {
+            cmd.error(
+                ErrorKind::TooFewValues,
+                "You need to provide the name of a config file or be in a directory with a .env.json file in it or one of it's parents",
+            )
+                .exit();
+        }
+    }
 
     // Read the config files, and parse them as JSON
     for (i, file_name) in args.config_files.iter().enumerate() {
         let Ok(mut file) = File::open(file_name) else {
+            if args.silent {
+                return;
+            }
             cmd.error(
                 ErrorKind::InvalidValue,
                 format!("Could not open '{}'", file_name),
@@ -166,6 +184,9 @@ fn main() {
             match parse_and_extract(&contents, json_path) {
                 Ok(val) => {
                     if val.is_empty() {
+                        if args.silent {
+                            return;
+                        }
                         cmd.error(
                             ErrorKind::InvalidValue,
                             format!(
@@ -173,41 +194,36 @@ fn main() {
                                 file_name, json_path
                             ),
                         )
-                        .exit();
+                            .exit();
                     }
                     add_values_to_map(&val, args.expand, &mut env_vars);
                 }
-                Err(e) => cmd
-                    .error(
+                Err(e) => {
+                    if args.silent {
+                        return;
+                    }
+                    cmd.error(
                         ErrorKind::InvalidValue,
                         format!("error while parsing json or jsonpath:  {}", e),
                     )
-                    .exit(),
+                        .exit()
+                }
             }
         } else {
+            if args.silent {
+                return;
+            }
             cmd.error(
                 ErrorKind::InvalidValue,
                 format!("Could not read JSON in '{}'", file_name),
             )
-            .exit();
+                .exit();
         }
     }
 
     if args.export {
-        let Ok(shell) = get_shell() else {
-            cmd.error(
-                ErrorKind::InvalidValue,
-                "Could not determine shell",
-            )
-                .exit();
-        };
         for (k, v) in &env_vars {
-            match shell.shell_type {
-                ShellType::Powershell => println!("Set-Item Env:{} \"{}\"", k, v),
-                _ => {
-                    println!("export {}=\"{}\"", k, v);
-                }
-            }
+            println!("export {}=\"{}\"", k, v);
         }
         return;
     }
@@ -219,16 +235,18 @@ fn main() {
     )
 }
 
-fn install_shell_script() {
+fn install_shell_script(silent: bool) {
     let Ok(shell) = get_shell() else {
-        println!("Could not determine shell");
-        return;
+        if !silent {
+            println!("Could not determine shell");
+        }
+        process::exit(1);
     };
 
     // Get the appropriate script to append to the configuration file
     // for the user's current shell
-
-    if !Confirm::new()
+    if !silent
+        && !Confirm::new()
         .with_prompt(format!(
             "Your shell has been detected as: '{}', is that correct?",
             shell
@@ -240,7 +258,7 @@ fn install_shell_script() {
         return;
     }
 
-    // indent a multiline string using 4 spaces
+    // indent the script string using 4 spaces
     let script = shell
         .script
         .lines()
@@ -254,16 +272,22 @@ fn install_shell_script() {
             path
         }
         None => {
-            println!("Could not determine home directory");
-            return;
+            if !silent {
+                println!("Could not determine home directory");
+            }
+            process::exit(1);
         }
     };
-    println!(
-        "I am going to append the following lines to your shell configuration file at '{}':\n {}\n",
-        config_path.to_str().unwrap(),
-        script
-    );
-    if !Confirm::new()
+    if !silent {
+        println!(
+            "I am going to append the following lines to your shell configuration file at '{}':\n {}\n",
+            config_path.to_str().unwrap(),
+            script
+        );
+    }
+
+    if !silent
+        && !Confirm::new()
         .with_prompt("Do you want me to do that? ")
         .interact()
         .unwrap_or(false)
@@ -275,8 +299,10 @@ fn install_shell_script() {
     // Check if the config file exists and create it if it does not
     if !config_path.exists() {
         let Ok(mut file) = File::create(&config_path) else {
-            println!("Could not create file '{}'", config_path.to_str().unwrap());
-            return;
+            if !silent {
+                println!("Could not create file '{}'", config_path.to_str().unwrap());
+            }
+            process::exit(1);
         };
         file.write_all(b"").unwrap();
     }
@@ -285,13 +311,26 @@ fn install_shell_script() {
     let mut file = match fs::OpenOptions::new().append(true).open(&config_path) {
         Ok(file) => file,
         Err(error) => {
-            eprintln!("Error opening {:?}: {}", &config_path, error);
-            return;
+            if !silent {
+                println!(
+                    "Could not open file '{}': {}",
+                    config_path.to_str().unwrap(),
+                    error
+                );
+            }
+            process::exit(1);
         }
     };
 
     if let Err(error) = file.write_all(shell.script.as_bytes()) {
-        eprintln!("Error writing to {:?}: {}", &config_path, error);
+        if !silent {
+            println!(
+                "Could not write to file '{}': {}",
+                config_path.to_str().unwrap(),
+                error
+            );
+        }
+        process::exit(1);
     }
 }
 
@@ -314,8 +353,6 @@ fn get_shell() -> Result<Shell, String> {
         "bash" => Ok(BASH.clone()),
         "zsh" => Ok(ZSH.clone()),
         "fish" => Ok(FISH.clone()),
-        "nushell" => Ok(NU_SHELL.clone()),
-        "pwsh" => Ok(POWERSHELL.clone()),
         _ => Err("Unknown shell".to_string()),
     }
 }
@@ -387,6 +424,22 @@ fn add_values_to_map(
         }
     }
 }
+
+/// Recursively find the file '.env.json' in the current directory and all parent directories.
+fn find_env_file() -> Option<PathBuf> {
+    let mut current_dir = env::current_dir().unwrap();
+    loop {
+        let mut env_file = current_dir.clone();
+        env_file.push(".env.json");
+        if env_file.exists() {
+            return Some(env_file);
+        }
+        if !current_dir.pop() {
+            return None;
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

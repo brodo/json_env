@@ -77,6 +77,7 @@ nested={"boo":"far","hello":"world"}
 [...]
 ```
 
+json_env searches for `.env.json` files in the current directory and all parent directories.
 
 ### Environment Variable Expansion
 
