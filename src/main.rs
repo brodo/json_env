@@ -86,9 +86,9 @@ static ZSH: Shell = Shell {
 
 #[derive(Parser, Debug)]
 #[command(
-author,
-version,
-about = "Reads a JSON file and runs a program with these environment variables."
+    author,
+    version,
+    about = "Reads a JSON file and runs a program with these environment variables."
 )]
 struct Args {
     /// Expand env variables
@@ -182,7 +182,7 @@ fn main() {
             ErrorKind::TooFewValues,
             "You need to provide the name of an executable",
         )
-            .exit();
+        .exit();
     }
 
     if args.config_files.is_empty() {
@@ -225,11 +225,9 @@ fn main() {
                         }
                         cmd.error(
                             ErrorKind::InvalidValue,
-                            format!(
-                                "There is nothing in file '{file_name}' at path '{json_path}'"
-                            ),
+                            format!("There is nothing in file '{file_name}' at path '{json_path}'"),
                         )
-                            .exit();
+                        .exit();
                     }
                     add_values_to_map(&val, args.expand, &mut env_vars);
                 }
@@ -241,7 +239,7 @@ fn main() {
                         ErrorKind::InvalidValue,
                         format!("error while parsing json or jsonpath:  {e}"),
                     )
-                        .exit()
+                    .exit()
                 }
             }
         } else {
@@ -252,7 +250,7 @@ fn main() {
                 ErrorKind::InvalidValue,
                 format!("Could not read JSON in '{file_name}'"),
             )
-                .exit();
+            .exit();
         }
     }
 
@@ -365,11 +363,11 @@ fn install_shell_completion(silent: bool) {
     // for the user's current shell
     if !silent
         && !Confirm::new()
-        .with_prompt(format!(
-            "Your shell has been detected as: '{shell}', is that correct?"
-        ))
-        .interact()
-        .unwrap_or(false)
+            .with_prompt(format!(
+                "Your shell has been detected as: '{shell}', is that correct?"
+            ))
+            .interact()
+            .unwrap_or(false)
     {
         println!("Please set your shell to one of the supported shells and try again.");
         return;
@@ -405,9 +403,9 @@ fn install_shell_completion(silent: bool) {
 
     if !silent
         && !Confirm::new()
-        .with_prompt("Do you want me to do that? ")
-        .interact()
-        .unwrap_or(false)
+            .with_prompt("Do you want me to do that? ")
+            .interact()
+            .unwrap_or(false)
     {
         println!("Please set your shell to one of the supported shells and try again.");
         return;
