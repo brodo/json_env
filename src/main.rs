@@ -86,9 +86,9 @@ static ZSH: Shell = Shell {
 
 #[derive(Parser, Debug)]
 #[command(
-    author,
-    version,
-    about = "Reads a JSON file and runs a program with these environment variables."
+author,
+version,
+about = "Reads a JSON file and runs a program with these environment variables."
 )]
 struct Args {
     /// Expand env variables
@@ -182,7 +182,7 @@ fn main() {
             ErrorKind::TooFewValues,
             "You need to provide the name of an executable",
         )
-        .exit();
+            .exit();
     }
 
     if args.config_files.is_empty() {
@@ -208,7 +208,7 @@ fn main() {
             }
             cmd.error(
                 ErrorKind::InvalidValue,
-                format!("Could not open '{}'", file_name),
+                format!("Could not open '{file_name}'"),
             ).exit();
         };
         let mut contents = String::new();
@@ -226,11 +226,10 @@ fn main() {
                         cmd.error(
                             ErrorKind::InvalidValue,
                             format!(
-                                "There is nothing in file '{}' at path '{}'",
-                                file_name, json_path
+                                "There is nothing in file '{file_name}' at path '{json_path}'"
                             ),
                         )
-                        .exit();
+                            .exit();
                     }
                     add_values_to_map(&val, args.expand, &mut env_vars);
                 }
@@ -240,9 +239,9 @@ fn main() {
                     }
                     cmd.error(
                         ErrorKind::InvalidValue,
-                        format!("error while parsing json or jsonpath:  {}", e),
+                        format!("error while parsing json or jsonpath:  {e}"),
                     )
-                    .exit()
+                        .exit()
                 }
             }
         } else {
@@ -251,15 +250,15 @@ fn main() {
             }
             cmd.error(
                 ErrorKind::InvalidValue,
-                format!("Could not read JSON in '{}'", file_name),
+                format!("Could not read JSON in '{file_name}'"),
             )
-            .exit();
+                .exit();
         }
     }
 
     if args.export {
         for (k, v) in &env_vars {
-            println!("export {}=\"{}\"", k, v);
+            println!("export {k}=\"{v}\"");
         }
         return;
     }
@@ -291,7 +290,7 @@ fn whitelist(config_path: &Path) {
             return;
         };
         if file.write_all(whitelist_json.as_bytes()).is_ok() {
-            println!("Whitelisted {}", config_path_str);
+            println!("Whitelisted {config_path_str}");
         }
         return;
     };
@@ -303,7 +302,7 @@ fn whitelist(config_path: &Path) {
         let config_path_str = config_path.to_str().unwrap();
         for path in &whitelist {
             if path == config_path_str {
-                println!("Already whitelisted {}", config_path_str);
+                println!("Already whitelisted {config_path_str}");
                 return;
             }
         }
@@ -312,7 +311,7 @@ fn whitelist(config_path: &Path) {
             return;
         };
         if file.write_all(whitelist_json.as_bytes()).is_ok() {
-            println!("Whitelisted {}", config_path_str);
+            println!("Whitelisted {config_path_str}");
         }
     }
 }
@@ -366,12 +365,11 @@ fn install_shell_completion(silent: bool) {
     // for the user's current shell
     if !silent
         && !Confirm::new()
-            .with_prompt(format!(
-                "Your shell has been detected as: '{}', is that correct?",
-                shell
-            ))
-            .interact()
-            .unwrap_or(false)
+        .with_prompt(format!(
+            "Your shell has been detected as: '{shell}', is that correct?"
+        ))
+        .interact()
+        .unwrap_or(false)
     {
         println!("Please set your shell to one of the supported shells and try again.");
         return;
@@ -381,7 +379,7 @@ fn install_shell_completion(silent: bool) {
     let script = shell
         .script
         .lines()
-        .map(|line| format!("    {}", line))
+        .map(|line| format!("    {line}"))
         .collect::<Vec<String>>()
         .join("\n");
 
@@ -407,9 +405,9 @@ fn install_shell_completion(silent: bool) {
 
     if !silent
         && !Confirm::new()
-            .with_prompt("Do you want me to do that? ")
-            .interact()
-            .unwrap_or(false)
+        .with_prompt("Do you want me to do that? ")
+        .interact()
+        .unwrap_or(false)
     {
         println!("Please set your shell to one of the supported shells and try again.");
         return;
@@ -486,7 +484,7 @@ fn get_shell() -> Result<Shell, String> {
     let shell_path = match env::var("SHELL") {
         Ok(shell) => PathBuf::from(shell),
         Err(error) => {
-            return Err(format!("Error getting shell name: {}", error));
+            return Err(format!("Error getting shell name: {error}"));
         }
     };
     let Some(file_name_os_str) = shell_path.file_name() else {
