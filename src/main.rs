@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::string::ToString;
 use std::{env, fs, process};
@@ -86,9 +86,9 @@ static ZSH: Shell = Shell {
 
 #[derive(Parser, Debug)]
 #[command(
-author,
-version,
-about = "Reads a JSON file and runs a program with these environment variables."
+    author,
+    version,
+    about = "Reads a JSON file and runs a program with these environment variables."
 )]
 struct Args {
     /// Expand env variables
@@ -114,28 +114,64 @@ struct Args {
     /// Print the path of the .env.json file that is used.
     #[arg(long, default_value_t = false)]
     print_config_path: bool,
+    /// Check if the current .env.json file is whitelisted
+    #[arg(long, default_value_t = false)]
+    is_whitelisted: bool,
+    /// Whitelist the current .env.json file
+    #[arg(long, default_value_t = false)]
+    whitelist: bool,
 }
 
-// `json_env` is [dotenv](https://github.com/motdotla/dotenv), but with JSON.
-// See [readme](Readme.md) for more information.
+/// `json_env` is [dotenv](https://github.com/motdotla/dotenv), but with JSON.
+/// See the [readme](Readme.md) for more information.
 fn main() {
     let mut args: Args = Args::parse();
     let mut cmd = Args::command();
 
-
     if args.install {
-        install_shell_script(args.silent);
+        install_shell_completion(args.silent);
         return;
+    }
+
+    if args.is_whitelisted {
+        if let Some(config_path) = find_env_file() {
+            if is_whitelisted(&config_path) {
+                println!("'{}' is whitelisted", &config_path.to_str().unwrap());
+                return;
+            } else {
+                println!("'{}' is not whitelisted", &config_path.to_str().unwrap());
+                process::exit(1);
+            }
+        } else {
+            println!("No .env.json file found");
+            process::exit(1);
+        }
+    }
+
+    if args.whitelist {
+        if let Some(config_path) = find_env_file() {
+            if is_whitelisted(&config_path) {
+                println!("Already whitelisted");
+                return;
+            } else {
+                whitelist(&config_path);
+                return;
+            }
+        } else {
+            println!("No .env.json file found");
+            process::exit(1);
+        }
     }
 
     let mut env_vars: HashMap<String, String> = HashMap::new();
     if args.print_config_path {
         if let Some(config_path) = find_env_file() {
             println!("{}", config_path.to_str().unwrap());
+            return;
         } else {
             println!("No .env.json file found");
+            process::exit(1);
         }
-        return;
     }
 
     if args.executable.is_empty() && !args.export {
@@ -146,7 +182,7 @@ fn main() {
             ErrorKind::TooFewValues,
             "You need to provide the name of an executable",
         )
-            .exit();
+        .exit();
     }
 
     if args.config_files.is_empty() {
@@ -194,7 +230,7 @@ fn main() {
                                 file_name, json_path
                             ),
                         )
-                            .exit();
+                        .exit();
                     }
                     add_values_to_map(&val, args.expand, &mut env_vars);
                 }
@@ -206,7 +242,7 @@ fn main() {
                         ErrorKind::InvalidValue,
                         format!("error while parsing json or jsonpath:  {}", e),
                     )
-                        .exit()
+                    .exit()
                 }
             }
         } else {
@@ -217,7 +253,7 @@ fn main() {
                 ErrorKind::InvalidValue,
                 format!("Could not read JSON in '{}'", file_name),
             )
-                .exit();
+            .exit();
         }
     }
 
@@ -235,7 +271,90 @@ fn main() {
     )
 }
 
-fn install_shell_script(silent: bool) {
+fn whitelist(config_path: &Path) {
+    let mut whitelist_dir = get_whitelist_dir_path(false);
+    // Create config dir if it doesn't exist
+    if !whitelist_dir.exists() && fs::create_dir_all(&whitelist_dir).is_err() {
+        println!("Could not create config dir");
+        process::exit(1);
+    }
+    whitelist_dir.push("whitelist.json");
+    let Ok(mut file) = File::open(whitelist_dir.clone()) else {
+        println!("Creating '{}'", whitelist_dir.to_str().unwrap());
+        let Ok(mut file) = File::create(whitelist_dir) else {
+            println!("Could not create whitelist file");
+            process::exit(1);
+        };
+        let config_path_str = config_path.to_str().unwrap();
+        let whitelist = vec![config_path_str.to_string()];
+        let Ok(whitelist_json) = serde_json::to_string(&whitelist) else {
+            return;
+        };
+        if file.write_all(whitelist_json.as_bytes()).is_ok() {
+            println!("Whitelisted {}", config_path_str);
+        }
+        return;
+    };
+    let mut contents = String::new();
+    if file.read_to_string(&mut contents).is_ok() {
+        let Ok(mut whitelist) = serde_json::from_str::<Vec<String>>(&contents) else {
+            return;
+        };
+        let config_path_str = config_path.to_str().unwrap();
+        for path in &whitelist {
+            if path == config_path_str {
+                println!("Already whitelisted {}", config_path_str);
+                return;
+            }
+        }
+        whitelist.push(config_path_str.to_string());
+        let Ok(whitelist_json) = serde_json::to_string(&whitelist) else {
+            return;
+        };
+        if file.write_all(whitelist_json.as_bytes()).is_ok() {
+            println!("Whitelisted {}", config_path_str);
+        }
+    }
+}
+
+fn is_whitelisted(config_path: &Path) -> bool {
+    let mut whitelist_dir = get_whitelist_dir_path(true);
+    whitelist_dir.push("whitelist.json");
+    let Ok(mut file) = File::open(whitelist_dir) else {
+        return false;
+    };
+    let mut contents = String::new();
+    if file.read_to_string(&mut contents).is_ok() {
+        let Ok(whitelist) = serde_json::from_str::<Vec<String>>(&contents) else {
+            return false;
+        };
+        let config_path_str = config_path.to_str().unwrap();
+        for path in whitelist {
+            if path == config_path_str {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn get_whitelist_dir_path(silent: bool) -> PathBuf {
+    match home_dir() {
+        Some(mut path) => {
+            path.push(".config");
+            path.push("json_env");
+            path
+        }
+        None => {
+            if !silent {
+                println!("Could not determine home directory");
+            }
+            process::exit(1);
+        }
+    }
+}
+
+fn install_shell_completion(silent: bool) {
     let Ok(shell) = get_shell() else {
         if !silent {
             println!("Could not determine shell");
@@ -247,12 +366,12 @@ fn install_shell_script(silent: bool) {
     // for the user's current shell
     if !silent
         && !Confirm::new()
-        .with_prompt(format!(
-            "Your shell has been detected as: '{}', is that correct?",
-            shell
-        ))
-        .interact()
-        .unwrap_or(false)
+            .with_prompt(format!(
+                "Your shell has been detected as: '{}', is that correct?",
+                shell
+            ))
+            .interact()
+            .unwrap_or(false)
     {
         println!("Please set your shell to one of the supported shells and try again.");
         return;
@@ -288,9 +407,9 @@ fn install_shell_script(silent: bool) {
 
     if !silent
         && !Confirm::new()
-        .with_prompt("Do you want me to do that? ")
-        .interact()
-        .unwrap_or(false)
+            .with_prompt("Do you want me to do that? ")
+            .interact()
+            .unwrap_or(false)
     {
         println!("Please set your shell to one of the supported shells and try again.");
         return;
@@ -331,6 +450,33 @@ fn install_shell_script(silent: bool) {
             );
         }
         process::exit(1);
+    }
+
+    let mut whitelist_dir_path = get_whitelist_dir_path(silent);
+
+    if !whitelist_dir_path.exists() {
+        if let Err(error) = fs::create_dir_all(&whitelist_dir_path) {
+            if !silent {
+                println!(
+                    "Could not create directory '{}': {}",
+                    whitelist_dir_path.to_str().unwrap(),
+                    error
+                );
+            }
+            process::exit(1);
+        }
+    }
+
+    // Create a whitelist file in the ~/.config/json_env directory
+    whitelist_dir_path.push("whitelist.json");
+    if !whitelist_dir_path.exists() {
+        let Ok(mut file) = File::create(&whitelist_dir_path) else {
+            if !silent {
+                println!("Could not create file '{}'", whitelist_dir_path.to_str().unwrap());
+            }
+            process::exit(1);
+        };
+        file.write_all(b"{\"items\":[]}").unwrap();
     }
 }
 
@@ -439,7 +585,6 @@ fn find_env_file() -> Option<PathBuf> {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
