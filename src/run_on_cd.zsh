@@ -23,6 +23,5 @@ function json_env_hook() {
   fi
 }
 
-# Use the add-zsh-hook function to run the json_env_hook function
-# whenever the chpwd event is triggered
-add-zsh-hook chpwd json_env_hook
+# Run the json_env_hook function before displaying the prompt
+PROMPT_COMMAND="json_env_hook; $PROMPT_COMMAND"

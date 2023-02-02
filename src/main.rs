@@ -70,23 +70,23 @@ impl Display for Shell {
 
 static BASH: Shell = Shell {
     shell_type: ShellType::Bash,
-    config_path: ".bash_profile",
+    config_path: ".bashrc",
     script: include_str!("run_on_cd.bash"),
-    include_command: "eval \"$(json_env --init bash)\"",
+    include_command: "\neval \"$(json_env --init bash)\"\n",
 };
 
 static FISH: Shell = Shell {
     shell_type: ShellType::Fish,
     config_path: ".config/fish/config.fish",
     script: include_str!("run_on_cd.fish"),
-    include_command: "eval \"$(json_env --init fish)\"",
+    include_command: "\neval \"$(json_env --init fish)\"\n",
 };
 
 static ZSH: Shell = Shell {
     shell_type: ShellType::Zsh,
     config_path: ".zshrc",
     script: include_str!("run_on_cd.zsh"),
-    include_command: "eval \"$(json_env --init zsh)\"",
+    include_command: "\neval \"$(json_env --init zsh)\"\n",
 };
 
 #[derive(Parser, Debug)]
