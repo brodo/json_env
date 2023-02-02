@@ -19,9 +19,10 @@ struct Shell {
     shell_type: ShellType,
     config_path: &'static str,
     script: &'static str,
+    include_command: &'static str,
 }
 
-#[derive(Debug)]
+#[derive(Debug, clap::ValueEnum)]
 enum ShellType {
     Bash,
     Zsh,
@@ -56,6 +57,7 @@ impl Clone for Shell {
             shell_type: self.shell_type,
             config_path: self.config_path,
             script: self.script,
+            include_command: self.include_command,
         }
     }
 }
@@ -70,18 +72,21 @@ static BASH: Shell = Shell {
     shell_type: ShellType::Bash,
     config_path: ".bash_profile",
     script: include_str!("run_on_cd.bash"),
+    include_command: "eval \"$(json_env --init bash)\"",
 };
 
 static FISH: Shell = Shell {
     shell_type: ShellType::Fish,
     config_path: ".config/fish/config.fish",
     script: include_str!("run_on_cd.fish"),
+    include_command: "eval \"$(json_env --init fish)\"",
 };
 
 static ZSH: Shell = Shell {
     shell_type: ShellType::Zsh,
     config_path: ".zshrc",
     script: include_str!("run_on_cd.zsh"),
+    include_command: "eval \"$(json_env --init zsh)\"",
 };
 
 #[derive(Parser, Debug)]
@@ -120,6 +125,9 @@ struct Args {
     /// Whitelist the current .env.json file
     #[arg(long, default_value_t = false)]
     whitelist: bool,
+    /// Print the init script for the supplied shell
+    #[arg(long)]
+    init: Option<ShellType>,
 }
 
 /// `json_env` is [dotenv](https://github.com/motdotla/dotenv), but with JSON.
@@ -130,6 +138,16 @@ fn main() {
 
     if args.install {
         install_shell_completion(args.silent);
+        return;
+    }
+
+    if let Some(shell) = args.init {
+        let shell = match shell {
+            ShellType::Bash => &BASH,
+            ShellType::Zsh => &ZSH,
+            ShellType::Fish => &FISH,
+        };
+        println!("{}", shell.script);
         return;
     }
 
@@ -269,7 +287,7 @@ fn main() {
 }
 
 fn whitelist(config_path: &Path) {
-    let mut whitelist_dir = get_whitelist_dir_path(false);
+    let mut whitelist_dir = json_env_config_dir_path(false);
     // Create config dir if it doesn't exist
     if !whitelist_dir.exists() && fs::create_dir_all(&whitelist_dir).is_err() {
         println!("Could not create config dir");
@@ -315,7 +333,7 @@ fn whitelist(config_path: &Path) {
 }
 
 fn is_whitelisted(config_path: &Path) -> bool {
-    let mut whitelist_dir = get_whitelist_dir_path(true);
+    let mut whitelist_dir = json_env_config_dir_path(true);
     whitelist_dir.push("whitelist.json");
     let Ok(mut file) = File::open(whitelist_dir) else {
         return false;
@@ -335,7 +353,7 @@ fn is_whitelisted(config_path: &Path) -> bool {
     false
 }
 
-fn get_whitelist_dir_path(silent: bool) -> PathBuf {
+fn json_env_config_dir_path(silent: bool) -> PathBuf {
     match home_dir() {
         Some(mut path) => {
             path.push(".config");
@@ -373,15 +391,7 @@ fn install_shell_completion(silent: bool) {
         return;
     }
 
-    // indent the script string using 4 spaces
-    let script = shell
-        .script
-        .lines()
-        .map(|line| format!("    {line}"))
-        .collect::<Vec<String>>()
-        .join("\n");
-
-    let config_path = match home_dir() {
+    let shell_config_path = match home_dir() {
         Some(mut path) => {
             path.push(shell.config_path);
             path
@@ -396,8 +406,8 @@ fn install_shell_completion(silent: bool) {
     if !silent {
         println!(
             "I am going to append the following lines to your shell configuration file at '{}':\n {}\n",
-            config_path.to_str().unwrap(),
-            script
+            shell_config_path.to_str().unwrap(),
+            shell.include_command
         );
     }
 
@@ -412,10 +422,10 @@ fn install_shell_completion(silent: bool) {
     }
 
     // Check if the config file exists and create it if it does not
-    if !config_path.exists() {
-        let Ok(mut file) = File::create(&config_path) else {
+    if !shell_config_path.exists() {
+        let Ok(mut file) = File::create(&shell_config_path) else {
             if !silent {
-                println!("Could not create file '{}'", config_path.to_str().unwrap());
+                println!("Could not create file '{}'", shell_config_path.to_str().unwrap());
             }
             process::exit(1);
         };
@@ -423,13 +433,13 @@ fn install_shell_completion(silent: bool) {
     }
 
     // Open the configuration file in append-only mode
-    let mut file = match fs::OpenOptions::new().append(true).open(&config_path) {
+    let mut file = match fs::OpenOptions::new().append(true).open(&shell_config_path) {
         Ok(file) => file,
         Err(error) => {
             if !silent {
                 println!(
                     "Could not open file '{}': {}",
-                    config_path.to_str().unwrap(),
+                    shell_config_path.to_str().unwrap(),
                     error
                 );
             }
@@ -437,25 +447,25 @@ fn install_shell_completion(silent: bool) {
         }
     };
 
-    if let Err(error) = file.write_all(shell.script.as_bytes()) {
+    if let Err(error) = file.write_all(shell.include_command.as_bytes()) {
         if !silent {
             println!(
                 "Could not write to file '{}': {}",
-                config_path.to_str().unwrap(),
+                shell_config_path.to_str().unwrap(),
                 error
             );
         }
         process::exit(1);
     }
 
-    let mut whitelist_dir_path = get_whitelist_dir_path(silent);
+    let mut json_env_config_dir_path = json_env_config_dir_path(silent);
 
-    if !whitelist_dir_path.exists() {
-        if let Err(error) = fs::create_dir_all(&whitelist_dir_path) {
+    if !json_env_config_dir_path.exists() {
+        if let Err(error) = fs::create_dir_all(&json_env_config_dir_path) {
             if !silent {
                 println!(
                     "Could not create directory '{}': {}",
-                    whitelist_dir_path.to_str().unwrap(),
+                    json_env_config_dir_path.to_str().unwrap(),
                     error
                 );
             }
@@ -464,11 +474,11 @@ fn install_shell_completion(silent: bool) {
     }
 
     // Create a whitelist file in the ~/.config/json_env directory
-    whitelist_dir_path.push("whitelist.json");
-    if !whitelist_dir_path.exists() {
-        let Ok(mut file) = File::create(&whitelist_dir_path) else {
+    json_env_config_dir_path.push("whitelist.json");
+    if !json_env_config_dir_path.exists() {
+        let Ok(mut file) = File::create(&json_env_config_dir_path) else {
             if !silent {
-                println!("Could not create file '{}'", whitelist_dir_path.to_str().unwrap());
+                println!("Could not create file '{}'", json_env_config_dir_path.to_str().unwrap());
             }
             process::exit(1);
         };
