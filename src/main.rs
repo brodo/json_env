@@ -254,11 +254,8 @@ fn main() {
                     if args.silent {
                         return;
                     }
-                    cmd.error(
-                        ErrorKind::InvalidValue,
-                        format!("error while parsing json or jsonpath:  {e}"),
-                    )
-                    .exit()
+                    eprintln!("Error while parsing json or jsonpath: {e} in '{file_name}'");
+                    process::exit(1);
                 }
             }
         } else {
