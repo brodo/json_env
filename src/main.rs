@@ -1,3 +1,12 @@
+use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::string::ToString;
+use std::{env, fs, process};
+
 use anyhow::{Error, Result};
 use clap::error::ErrorKind;
 use clap::CommandFactory;
@@ -6,14 +15,6 @@ use dialoguer::Confirm;
 use dirs::home_dir;
 use jsonpath_rust::JsonPathFinder;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
-use std::fs::File;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::string::ToString;
-use std::{env, fs, process};
 
 struct Shell {
     shell_type: ShellType,
@@ -287,49 +288,75 @@ fn main() {
 }
 
 fn whitelist(config_path: &Path) {
-    let mut whitelist_dir = json_env_config_dir_path(false);
+    let mut config_dir = json_env_config_dir_path(false);
     // Create config dir if it doesn't exist
-    if !whitelist_dir.exists() && fs::create_dir_all(&whitelist_dir).is_err() {
+    if !config_dir.exists() && fs::create_dir_all(&config_dir).is_err() {
         println!("Could not create config dir");
         process::exit(1);
     }
-    whitelist_dir.push("whitelist.json");
-    let Ok(mut file) = File::open(whitelist_dir.clone()) else {
-        println!("Creating '{}'", whitelist_dir.to_str().unwrap());
-        let Ok(mut file) = File::create(whitelist_dir) else {
-            println!("Could not create whitelist file");
-            process::exit(1);
-        };
-        let config_path_str = config_path.to_str().unwrap();
-        let whitelist = vec![config_path_str.to_string()];
-        let Ok(whitelist_json) = serde_json::to_string(&whitelist) else {
-            return;
-        };
-        if file.write_all(whitelist_json.as_bytes()).is_ok() {
-            println!("Whitelisted {config_path_str}");
-        }
-        return;
+    config_dir.push("whitelist.json");
+
+    let contents = read_or_create_empty(&config_dir);
+
+    let mut whitelist = match serde_json::from_str::<Vec<String>>(&contents) {
+        Ok(w) => w,
+        Err(_) => Vec::new(),
     };
-    let mut contents = String::new();
-    if file.read_to_string(&mut contents).is_ok() {
-        let Ok(mut whitelist) = serde_json::from_str::<Vec<String>>(&contents) else {
+    let config_path_str = config_path.to_str().unwrap();
+    for path in &whitelist {
+        if path == config_path_str {
+            println!("Already whitelisted {config_path_str}");
             return;
-        };
-        let config_path_str = config_path.to_str().unwrap();
-        for path in &whitelist {
-            if path == config_path_str {
-                println!("Already whitelisted {config_path_str}");
-                return;
-            }
-        }
-        whitelist.push(config_path_str.to_string());
-        let Ok(whitelist_json) = serde_json::to_string(&whitelist) else {
-            return;
-        };
-        if file.write_all(whitelist_json.as_bytes()).is_ok() {
-            println!("Whitelisted {config_path_str}");
         }
     }
+    whitelist.push(config_path_str.to_string());
+    let Ok(whitelist_json) = serde_json::to_string_pretty(&whitelist) else {
+            return;
+        };
+
+    let Ok(mut output_file) = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(config_dir.clone()) else
+    {
+            println!("Could not open whitelist file");
+            process::exit(1);
+
+    };
+
+    if output_file
+        .write_all(format!("{whitelist_json}\n").as_bytes())
+        .is_ok()
+    {
+        println!("Whitelisted {config_path_str}");
+    }
+}
+
+fn read_or_create_empty(config_file: &Path) -> String {
+    let mut read_file = match OpenOptions::new().read(true).open(config_file) {
+        Ok(file) => file,
+        Err(_) => {
+            // Create file if it doesn't exist
+            match OpenOptions::new()
+                .write(true)
+                .read(true)
+                .create(true)
+                .open(config_file)
+            {
+                Ok(file) => file,
+                Err(_) => {
+                    println!("Could not create whitelist file");
+                    process::exit(1);
+                }
+            }
+        }
+    };
+
+    let mut contents = String::new();
+    if read_file.read_to_string(&mut contents).is_err() {
+        contents = "[]".to_string();
+    }
+    contents
 }
 
 fn is_whitelisted(config_path: &Path) -> bool {
@@ -433,7 +460,7 @@ fn install_shell_completion(silent: bool) {
     }
 
     // Open the configuration file in append-only mode
-    let mut file = match fs::OpenOptions::new().append(true).open(&shell_config_path) {
+    let mut file = match OpenOptions::new().append(true).open(&shell_config_path) {
         Ok(file) => file,
         Err(error) => {
             if !silent {
